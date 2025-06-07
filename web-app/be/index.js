@@ -1,107 +1,115 @@
 const express = require('express');
 const app = express();
-const port = 5000; // Specify the desired port
-let crypto = require('crypto');
+const port = 5000;
+const crypto = require('crypto');
 const multer = require("multer");
 const { db, storage } = require ('./config');
 
 const upload = multer({ storage: multer.memoryStorage() });
-// Define your routes and middleware here
 
+// Middleware untuk CORS
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE'); // Izinkan lebih banyak metode
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
   next();
 });
-app.use(express.json()); 
- // Add this line to parse JSON data
 
+// Middleware untuk membaca JSON body (diperlukan untuk /verify)
+app.use(express.json());
+
+// =================================================================
+// ENDPOINT UNTUK MEMBUAT KUNCI (Tidak Diubah)
+// =================================================================
 app.get('/KeyGen', (req, res) => {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
       modulusLength: 2048,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'der',
-      },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'der',
-      },
+      publicKeyEncoding: { type: 'spki', format: 'der' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'der' },
     });
   
-    // Store the key pair in Firestore
     db.collection('keyPairs')
       .add({ publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64') })
       .then((docRef) => {
         res.send({ id: docRef.id, publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64') });
       })
-
       .catch((error) => {
+        console.error("Gagal menyimpan key pair:", error);
         res.status(500).send({ error: 'Failed to store key pair' });
       });
-  });
-  
-  let uploadedFile; // Variable to store the uploaded file information
+});
 
-  app.post("/upload", upload.single("file"), (req, res) => {
-    // Store the uploaded file information
-    uploadedFile = req.file;
-  
-    const storageRef = storage.ref(`files/${uploadedFile.originalname}`);
-  
-    storageRef
-      .put(uploadedFile.buffer)
-      .then((snapshot) => {
-        console.log("File uploaded successfully");
-        res.json({ message: "File uploaded successfully" });
-      })
-      .catch((error) => {
-        console.error("Failed to upload file:", error);
-        res.status(500).json({ error: "Failed to upload file" });
-      });
-  });
-  
-  app.post("/sign", (req, res) => {
-    let privateKey = req.body.privateKey;
-  
-    privateKey = crypto.createPrivateKey({
-      key: Buffer.from(privateKey, "base64"),
+// =================================================================
+// ENDPOINT BARU UNTUK MENANDATANGANI (Menggabungkan /upload dan /sign)
+// =================================================================
+app.post("/sign", upload.single("file"), (req, res) => {
+  // 1. Dapatkan Kunci Privat dari body request (dikirim via FormData)
+  const privateKeyString = req.body.privateKey;
+
+  // 2. Dapatkan file yang diunggah dari middleware multer
+  const uploadedFile = req.file;
+
+  // 3. Validasi input 
+  if (!uploadedFile) {
+    return res.status(400).send({ error: "File tidak ditemukan. Pastikan Anda mengunggah file." });
+  }
+  if (!privateKeyString) {
+    return res.status(400).send({ error: "Kunci privat tidak ditemukan." });
+  }
+
+  try {
+    // 4. Proses Kunci Privat
+    const privateKey = crypto.createPrivateKey({
+      key: Buffer.from(privateKeyString, "base64"),
       type: "pkcs8",
       format: "der",
     });
-  
-    if (!uploadedFile) {
-      res.status(400).send({ error: "No file uploaded" });
-      return;
-    }
-  
+
+    // 5. Buat Tanda Tangan dari buffer file
     const sign = crypto.createSign("SHA256");
     sign.update(uploadedFile.buffer);
     sign.end();
     const signature = sign.sign(privateKey).toString("base64");
-  
+
     const fileName = uploadedFile.originalname;
-    const fileBuffer = uploadedFile.buffer;
-    const fileBase64 = fileBuffer.toString("base64");
-  
-    // Store the file metadata (filename, signature, and file content as Base64 string) in Firestore
-    db.collection("documents")
-      .add({
-        fileName,
-        signature,
-        fileContent: fileBase64,
-      })
-      .then((docRef) => {
-        res.send({ id: docRef.id, fileName, signature });
-      })
-      .catch((error) => {
-        console.error("Failed to sign document:", error);
-        res.status(500).send({ error: "Failed to sign document" });
-      });
-  });
-  
-  app.post("/verify", (req, res) => {
-    let { fileName, publicKey, signature } = req.body;
+    const fileBase64 = uploadedFile.buffer.toString("base64");
+
+    // 6. Simpan file ke Firebase Storage
+    const storageRef = storage.ref(`files/${fileName}`);
+    storageRef.put(uploadedFile.buffer).then(() => {
+        // 7. Jika upload berhasil, simpan metadata ke Firestore
+        db.collection("documents")
+          .add({
+            fileName,
+            signature,
+            fileContent: fileBase64,
+          })
+          .then((docRef) => {
+            console.log("File berhasil ditandatangani dan disimpan:", docRef.id);
+            // Kirim kembali signature ke frontend sebagai konfirmasi
+            res.send({ id: docRef.id, fileName, signature });
+          })
+          .catch((error) => {
+            console.error("Gagal menyimpan dokumen ke Firestore:", error);
+            res.status(500).send({ error: "Gagal menyimpan dokumen ke Firestore" });
+          });
+    }).catch(error => {
+        console.error("Gagal mengunggah file ke Storage:", error);
+        res.status(500).send({ error: "Gagal mengunggah file ke Storage" });
+    });
+
+  } catch (error) {
+    // Tangkap error jika format kunci salah, dll.
+    console.error("Terjadi error saat membuat signature:", error);
+    res.status(500).send({ error: "Format kunci privat tidak valid atau terjadi kesalahan lain." });
+  }
+});
+
+// =================================================================
+// ENDPOINT UNTUK VERIFIKASI (Tidak Diubah, tapi lebih aman sekarang)
+// =================================================================
+app.post("/verify", (req, res) => {
+  let { fileName, publicKey, signature } = req.body;
   
     publicKey = crypto.createPublicKey({
       key: Buffer.from(publicKey, "base64"),
@@ -109,7 +117,6 @@ app.get('/KeyGen', (req, res) => {
       format: "der",
     });
   
-    // Retrieve the document with the matching filename from Firestore
     db.collection("documents")
       .where("fileName", "==", fileName)
       .get()
@@ -127,11 +134,9 @@ app.get('/KeyGen', (req, res) => {
             verify.end();
   
             try {
-              // Verify the signature against the stored signature
               const result = verify.verify(publicKey, Buffer.from(signature, "base64"));
   
               if (result) {
-                // Verification successful, generate the file download URL
                 const storageRef = storage.ref(`files/${fileName}`);
                 storageRef
                   .getDownloadURL()
@@ -143,7 +148,6 @@ app.get('/KeyGen', (req, res) => {
                     res.status(500).send({ error: "Failed to get file download URL" });
                   });
               } else {
-                // Verification failed
                 res.send({ fileName, signature, verify: false });
               }
             } catch (error) {
@@ -157,12 +161,14 @@ app.get('/KeyGen', (req, res) => {
         console.error("Failed to verify document:", error);
         res.status(500).send({ error: "Failed to verify document" });
       });
-  });
+});
 
-  app.get('/documents/:id', (req, res) => {
-    const documentId = req.params.id;
+// =================================================================
+// ENDPOINT UNTUK MENGAMBIL DOKUMEN (Tidak Diubah)
+// =================================================================
+app.get('/documents/:id', (req, res) => {
+  const documentId = req.params.id;
   
-    // Retrieve the document from Firestore based on the ID
     db.collection('documents')
       .doc(documentId)
       .get()
@@ -170,7 +176,6 @@ app.get('/KeyGen', (req, res) => {
         if (!doc.exists) {
           res.status(404).send({ error: 'Document not found' });
         } else {
-          // Extract all attributes from the document data
           const attributes = doc.data();
           res.send(attributes);
         }
@@ -178,8 +183,11 @@ app.get('/KeyGen', (req, res) => {
       .catch((error) => {
         res.status(500).send({ error: 'Failed to fetch document' });
       });
-  });  
+});  
 
+// =================================================================
+// SERVER LISTENER
+// =================================================================
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });

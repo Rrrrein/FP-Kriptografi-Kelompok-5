@@ -3,32 +3,16 @@ import axios from "axios";
 import QRCode from "qrcode";
 
 export default function GenerateSignature() {
+  // 1. State disederhanakan
   const [inputFile, setInputFile] = useState(null);
-  const [formData, setFormData] = useState({ inputPrivateKey: "", isUpload: false, isUploadErr: false });
+  const [privateKey, setPrivateKey] = useState(""); // Hanya untuk private key
   const [signature, setSignature] = useState("");
   const [signatureId, setSignatureId] = useState("");
   const [imageUrl, setImageUrl] = useState("");
   const [isGeneratedSign, setIsGeneratedSign] = useState(false);
-  
-  async function genSign() {
-    if (formData.isUpload) {
-      try {
-        const res = await axios.post("http://localhost:5000/sign", {
-          privateKey: formData.inputPrivateKey,
-        });
-        const { signature, id: signatureId } = res.data;
-        setSignature(signature);
-        setSignatureId(signatureId);
-        setIsGeneratedSign(true);
-      } catch (err) {
-        console.log(err);
-      }
-    } else {
-      console.log("please upload your file");
-      setFormData({...formData, isUploadErr: true})
-    }
-  }
+  const [isLoading, setIsLoading] = useState(false); // State untuk loading
 
+  // Fungsi untuk membuat QR Code (Tidak perlu diubah)
   useEffect(() => {
     const generateQRCode = async (url) => {
       try {
@@ -42,36 +26,64 @@ export default function GenerateSignature() {
 
     if (signatureId) {
       const qrUrl = `http://localhost:3000/verify/${signatureId}`;
-      console.log(qrUrl);
       generateQRCode(qrUrl).then((imageUrl) => setImageUrl(imageUrl));
     }
   }, [signatureId]);
 
-  function handleFileChange(e) {
-    setInputFile(e.target.files[0]);
-  }
+  // 2. Fungsi utama untuk men-generate signature (DITULIS ULANG TOTAL)
+  async function handleGenerate() {
+    // Validasi input
+    if (!inputFile || !privateKey) {
+      alert("Harap pilih file dan masukkan kunci privat Anda.");
+      return;
+    }
 
-  async function handleFileUpload() {
+    setIsLoading(true); // Mulai loading
+
+    // Buat objek FormData untuk mengirim file dan teks bersamaan
     const formData = new FormData();
-    formData.append("file", inputFile);
+    formData.append("file", inputFile); // 'file' harus cocok dengan upload.single("file") di backend
+    formData.append("privateKey", privateKey);
 
     try {
-      const res = await axios.post("http://localhost:5000/upload", formData);
-      console.log(res.data.message);
-      setFormData({...formData, isUploadErr: true})
-      setFormData({ ...formData, isUpload: true });
+      // Kirim satu permintaan ke endpoint /sign
+      const res = await axios.post("http://localhost:5000/sign", formData, {
+        headers: {
+          // Header ini WAJIB untuk mengirim file
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      // Jika berhasil, update state dengan data dari backend
+      const { signature, id: signatureId } = res.data;
+      setSignature(signature);
+      setSignatureId(signatureId);
+      setIsGeneratedSign(true);
+      alert("Tanda tangan dan QR Code berhasil dibuat!");
+
     } catch (err) {
-      console.log(err);
+      // Tangkap dan tampilkan error dari backend
+      console.error("Gagal membuat tanda tangan:", err);
+      const errorMessage = err.response?.data?.error || "Terjadi kesalahan yang tidak diketahui.";
+      alert(`Error: ${errorMessage}`);
+    } finally {
+      setIsLoading(false); // Hentikan loading, baik berhasil maupun gagal
     }
   }
 
+  // Fungsi untuk handle perubahan file (Tidak perlu diubah)
+  function handleFileChange(e) {
+    setInputFile(e.target.files[0]);
+    setIsGeneratedSign(false); // Reset jika file diubah
+    setSignature("");
+    setImageUrl("");
+  }
+
+  // Fungsi untuk copy (Tidak perlu diubah)
   function handleCopy(text) {
-    const el = document.createElement("textarea");
-    el.value = text;
-    document.body.appendChild(el);
-    el.select();
-    document.execCommand("copy");
-    document.body.removeChild(el);
+    if (!text) return; // Jangan lakukan apa-apa jika teks kosong
+    navigator.clipboard.writeText(text);
+    alert("Copied to clipboard!");
   }
 
   return (
@@ -79,6 +91,8 @@ export default function GenerateSignature() {
       <span className="mx-auto mb-6 text-xl font-bold text-white lg:text-3xl">
         Generate Signature
       </span>
+
+      {/* 3. BAGIAN UPLOAD FILE DISERDEHANAKAN */}
       <div className="mb-6 lg:px-28">
         <div className="flex w-full flex-col rounded-lg bg-white px-16 py-3">
           <span className="mx-auto mb-3 text-base font-bold text-ipurple lg:text-lg">
@@ -89,41 +103,31 @@ export default function GenerateSignature() {
             type="file"
             onChange={handleFileChange}
           />
-          <button
-            onClick={handleFileUpload}
-            type="button"
-            className="text-yellow mx-auto mb-1 w-fit rounded-lg bg-igreen px-3 py-1 text-sm font-bold text-white"
-          >
-            Upload
-          </button>
-          {formData.isUploadErr && (
-            <div className="mx-auto text-xs font-medium text-red-500">
-              Please upload your file :)
-            </div>
-          )}
-          {formData.isUpload && (
-            <p className="mx-auto text-sm font-semibold text-igreen">
-              File uploaded !!
+          {/* Tombol Upload dihapus karena tidak diperlukan lagi */}
+          {inputFile && (
+             <p className="mx-auto text-sm font-semibold text-igreen">
+              File: {inputFile.name}
             </p>
           )}
         </div>
       </div>
+
       <div className="mb-6 flex flex-col gap-y-5 lg:gap-x-8">
         <div className="flex flex-col gap-2 rounded-lg bg-white px-7 py-4 lg:px-12 lg:pb-8">
           <span className="mx-auto text-base font-bold text-ipurple lg:text-lg">
             Private Key
           </span>
+          {/* 4. Textarea dihubungkan ke state 'privateKey' yang baru */}
           <textarea
             rows="4"
             className="block w-full rounded-lg border border-gray-300 bg-gray-50 p-6 py-3 text-sm"
-            value={formData.inputPrivateKey}
-            onChange={(event) =>
-              setFormData({ ...formData, inputPrivateKey: event.target.value })
-            }
+            value={privateKey}
+            onChange={(event) => setPrivateKey(event.target.value)}
             placeholder="Input your private key"
           />
         </div>
       </div>
+
       <div className="mb-6 w-full px-10 lg:px-32">
         <div className="flex flex-col gap-3 rounded-lg bg-white px-7 py-4 lg:px-12">
           <span className="mx-auto text-base font-bold text-ipurple lg:text-lg">
@@ -136,8 +140,8 @@ export default function GenerateSignature() {
             readOnly
             placeholder="Signature will be generated here"
           />
-          {isGeneratedSign && (
-            <a href={imageUrl} download className="mx-auto mb-2 h-full">
+          {isGeneratedSign && imageUrl && (
+            <a href={imageUrl} download="signature-qrcode.png" className="mx-auto mb-2 h-full">
               <img src={imageUrl} alt="QRCODE" />
             </a>
           )}
@@ -149,13 +153,17 @@ export default function GenerateSignature() {
           </button>
         </div>
       </div>
+
+      {/* 5. Tombol 'Generate' sekarang memanggil fungsi yang sudah diperbaiki */}
       <button
-        onClick={genSign}
-        className="mx-auto mb-3 w-fit rounded-lg bg-iyellow px-3 py-2 font-bold text-ipurple"
+        onClick={handleGenerate}
+        className="mx-auto mb-3 w-fit rounded-lg bg-iyellow px-3 py-2 font-bold text-ipurple disabled:opacity-50"
         type="button"
+        disabled={isLoading} // Tombol dinonaktifkan saat loading
       >
-        Generate
+        {isLoading ? "Generating..." : "Generate"}
       </button>
+
       {isGeneratedSign && (
         <div className=" mx-auto w-fit rounded-xl border-2 border-iyellow px-3 py-[0.2rem]">
           <p className=" font-semibold text-white">
