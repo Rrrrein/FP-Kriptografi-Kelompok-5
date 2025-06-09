@@ -89,6 +89,8 @@ node index.js
 ```
 Backend berjalan di: http://localhost:5000
 
+![Screenshot 2025-06-09 162959](https://github.com/user-attachments/assets/f8a3f14a-f463-4447-801b-4b8c120fdb60)
+
 ### 2. Jalankan Fr
 
 ```bash
@@ -98,3 +100,8 @@ npm start
 ```
 Frontend berjalan di: http://localhost:3000
 
+![Screenshot 2025-06-09 163150](https://github.com/user-attachments/assets/4a6e4de0-6791-434b-94d6-43fa69e3d591)
+
+![Screenshot 2025-06-09 163209](https://github.com/user-attachments/assets/ed2e8f1e-d75b-467d-8de5-97758ba801f8)
+
+![Screenshot 2025-06-09 163222](https://github.com/user-attachments/assets/2d432243-2eff-490c-8184-29915844e25f)
