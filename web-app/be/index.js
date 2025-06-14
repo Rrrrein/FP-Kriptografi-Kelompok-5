@@ -149,7 +149,7 @@ app.post("/verify", async (req, res) => {
 
     if (result) {
       // 5. Jika berhasil, dapatkan URL publik dari Supabase
-      const { data: urlData } = supabase.storage.from('files').getPublicUrl(fileName);
+      const { data: urlData } = supabase.storage.from('filles').getPublicUrl(fileName);
       res.send({ fileName, signature: storedSignature, verify: true, fileURL: urlData.publicUrl });
     } else {
       res.send({ fileName, signature: storedSignature, verify: false, error: "Signature is not valid." });
