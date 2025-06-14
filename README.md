@@ -105,3 +105,6 @@ Frontend berjalan di: http://localhost:3000
 ![Screenshot 2025-06-09 163209](https://github.com/user-attachments/assets/ed2e8f1e-d75b-467d-8de5-97758ba801f8)
 
 ![Screenshot 2025-06-09 163222](https://github.com/user-attachments/assets/2d432243-2eff-490c-8184-29915844e25f)
+
+
+### PENTING!! : tambahkan serviceAccountKey.json di local ny masing masing buat firestore
