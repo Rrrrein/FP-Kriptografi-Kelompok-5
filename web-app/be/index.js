@@ -44,14 +44,10 @@ app.get('/KeyGen', (req, res) => {
 // =================================================================
 // ENDPOINT BARU UNTUK MENANDATANGANI (Menggabungkan /upload dan /sign)
 // =================================================================
-app.post("/sign", upload.single("file"), (req, res) => {
-  // 1. Dapatkan Kunci Privat dari body request (dikirim via FormData)
+app.post("/sign", upload.single("file"), async (req, res) => {
   const privateKeyString = req.body.privateKey;
-
-  // 2. Dapatkan file yang diunggah dari middleware multer
   const uploadedFile = req.file;
 
-  // 3. Validasi input 
   if (!uploadedFile) {
     return res.status(400).send({ error: "File tidak ditemukan. Pastikan Anda mengunggah file." });
   }
@@ -60,48 +56,45 @@ app.post("/sign", upload.single("file"), (req, res) => {
   }
 
   try {
-    // 4. Proses Kunci Privat
     const privateKey = crypto.createPrivateKey({
       key: Buffer.from(privateKeyString, "base64"),
       type: "pkcs8",
       format: "der",
     });
 
-    // 5. Buat Tanda Tangan dari buffer file
     const sign = crypto.createSign("SHA256");
     sign.update(uploadedFile.buffer);
     sign.end();
     const signature = sign.sign(privateKey).toString("base64");
 
-    const fileName = uploadedFile.originalname;
-    const fileBase64 = uploadedFile.buffer.toString("base64");
+    // Membuat nama file yang unik untuk menghindari konflik
+    const uniqueFileName = `${Date.now()}-${uploadedFile.originalname}`;
 
-    // 6. Simpan file ke Firebase Storage
-    const storageRef = storage.ref(`files/${fileName}`);
-    storageRef.put(uploadedFile.buffer).then(() => {
-        // 7. Jika upload berhasil, simpan metadata ke Firestore
-        db.collection("documents")
-          .add({
-            fileName,
-            signature,
-            fileContent: fileBase64,
-          })
-          .then((docRef) => {
-            console.log("File berhasil ditandatangani dan disimpan:", docRef.id);
-            // Kirim kembali signature ke frontend sebagai konfirmasi
-            res.send({ id: docRef.id, fileName, signature });
-          })
-          .catch((error) => {
-            console.error("Gagal menyimpan dokumen ke Firestore:", error);
-            res.status(500).send({ error: "Gagal menyimpan dokumen ke Firestore" });
-          });
-    }).catch(error => {
-        console.error("Gagal mengunggah file ke Storage:", error);
-        res.status(500).send({ error: "Gagal mengunggah file ke Storage" });
+    // 6. Unggah file ke Supabase Storage di bucket "files"
+    const { error: uploadError } = await supabase.storage
+      .from('files')
+      .upload(uniqueFileName, uploadedFile.buffer, {
+        contentType: uploadedFile.mimetype,
+        cacheControl: '3600',
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
+      return res.status(500).send({ error: "Gagal mengunggah file ke Supabase Storage" });
+    }
+
+    // 7. Simpan metadata (tanpa konten file) ke Firestore
+    const docRef = await db.collection("documents").add({
+      fileName: uniqueFileName,
+      originalName: uploadedFile.originalname,
+      signature: signature,
     });
 
+    console.log("File berhasil ditandatangani dan disimpan:", docRef.id);
+    res.send({ id: docRef.id, fileName: uniqueFileName, signature });
+
   } catch (error) {
-    // Tangkap error jika format kunci salah, dll.
     console.error("Terjadi error saat membuat signature:", error);
     res.status(500).send({ error: "Format kunci privat tidak valid atau terjadi kesalahan lain." });
   }
@@ -180,14 +173,13 @@ app.get('/documents/:id', (req, res) => {
         if (!doc.exists) {
           res.status(404).send({ error: 'Document not found' });
         } else {
-          const attributes = doc.data();
-          res.send(attributes);
+          res.send(doc.data());
         }
       })
       .catch((error) => {
         res.status(500).send({ error: 'Failed to fetch document' });
       });
-});  
+}); 
 
 // =================================================================
 // SERVER LISTENER
