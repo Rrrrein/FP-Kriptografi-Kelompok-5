@@ -72,7 +72,7 @@ app.post("/sign", upload.single("file"), async (req, res) => {
 
     // 6. Unggah file ke Supabase Storage di bucket "files"
     const { error: uploadError } = await supabase.storage
-      .from('files')
+      .from('filles')
       .upload(uniqueFileName, uploadedFile.buffer, {
         contentType: uploadedFile.mimetype,
         cacheControl: '3600',
@@ -124,7 +124,7 @@ app.post("/verify", async (req, res) => {
     
     // 2. Unduh file dari Supabase Storage untuk diverifikasi
     const { data: fileBlob, error: downloadError } = await supabase.storage
-      .from('files')
+      .from('filles')
       .download(fileName);
 
     if (downloadError) {
