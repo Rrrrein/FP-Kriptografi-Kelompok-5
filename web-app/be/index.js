@@ -1,10 +1,11 @@
-const express = require('express');
+import express from 'express';
+import crypto from 'crypto';
+import multer from 'multer';
+import { db } from './config.js'; // tambahkan .js
+import { supabase } from './supabaseClient.js'; // tambahkan .js
+
 const app = express();
 const port = 5000;
-const crypto = require('crypto');
-const multer = require("multer");
-const { db } = require ('./config');
-const { supabase } = require('./supabaseClient');
 
 const upload = multer({ storage: multer.memoryStorage() });
 
