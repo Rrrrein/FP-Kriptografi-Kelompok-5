@@ -19,9 +19,6 @@ Sign-QR adalah aplikasi web modern yang menyediakan alur kerja lengkap untuk men
 
 Proyek ini mengimplementasikan konsep kriptografi asimetris dalam antarmuka yang bersih, interaktif, dan ramah pengguna.
 
-<!-- Ganti dengan URL screenshot halaman utama Anda -->
-![Screenshot Sign-QR](URL_SCREENSHOT)
-
 ---
 
 ## 📑 Daftar Isi
