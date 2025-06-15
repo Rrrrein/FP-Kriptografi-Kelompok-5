@@ -4,13 +4,13 @@
 
 | No | Nama Anggota        | NIM           | Jobdesc                          |
 |----|---------------------|---------------|----------------------------------|
-| 1. | M. Abhinaya         | 5027231011    |                                  |
-| 2. | Aswalia Novitriasari| 5027231012    |                                  |
-| 3. | Ricko Mianto        | 5027231031    |                                  |
-| 4. | Agnes Zenobia G P   | 5027231034    |                                  |
-| 5. | Nayla Raissa A      | 5027231054    |                                  |
-| 6. | Aisha Ayya R        | 5027231056    |                                  |
-| 7. | Aisyah Rahmasari    | 5027231072    |                                  |
+| 1. | M. Abhinaya         | 5027231011    | Backend                          |
+| 2. | Aswalia Novitriasari| 5027231012    | Frontend                         |
+| 3. | Ricko Mianto        | 5027231031    | Backend                          |
+| 4. | Agnes Zenobia G P   | 5027231034    | Frontend                         |
+| 5. | Nayla Raissa A      | 5027231054    | Frontend                         |
+| 6. | Aisha Ayya R        | 5027231056    | Pengujian dan Dokumentasi        |
+| 7. | Aisyah Rahmasari    | 5027231072    | Pengujian dan Dokumentasi        |
 
 
 # 📄 Sign-QR: Sistem Tanda Tangan & Verifikasi Dokumen Digital
