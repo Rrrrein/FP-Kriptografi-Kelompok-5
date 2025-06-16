@@ -15,7 +15,7 @@
 
 # Sign-QR: Sistem Tanda Tangan & Verifikasi Dokumen Digital
 
-Sign-QR adalah aplikasi web modern yang menyediakan alur kerja lengkap untuk mengamankan dokumen digital. Pengguna dapat membuat identitas kriptografis mereka sendiri (pasangan kunci RSA), menandatangani file secara digital untuk menjamin keaslian dan integritas, serta memverifikasi dokumen melalui tautan unik yang disematkan dalam QR Code.
+Sign-QR adalah aplikasi web modern yang menyediakan alur kerja lengkap untuk mengamankan dokumen digital, memastikan setiap transaksi atau dokumen yang diproses terlindungi dengan aman. Pengguna dapat membuat identitas kriptografis mereka sendiri (pasangan kunci RSA), menandatangani file secara digital untuk menjamin keaslian dan integritas, serta memverifikasi dokumen melalui tautan unik yang disematkan dalam QR Code, yang dapat dipindai untuk validasi langsung.
 
 Proyek ini mengimplementasikan konsep kriptografi asimetris dalam antarmuka yang bersih, interaktif, dan ramah pengguna.
 
