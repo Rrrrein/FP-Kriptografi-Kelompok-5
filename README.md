@@ -13,7 +13,7 @@
 | 7. | Aisyah Rahmasari    | 5027231072    | Pengujian dan Dokumentasi        |
 
 
-# 📄 Sign-QR: Sistem Tanda Tangan & Verifikasi Dokumen Digital
+# Sign-QR: Sistem Tanda Tangan & Verifikasi Dokumen Digital
 
 Sign-QR adalah aplikasi web modern yang menyediakan alur kerja lengkap untuk mengamankan dokumen digital. Pengguna dapat membuat identitas kriptografis mereka sendiri (pasangan kunci RSA), menandatangani file secara digital untuk menjamin keaslian dan integritas, serta memverifikasi dokumen melalui tautan unik yang disematkan dalam QR Code.
 
@@ -21,7 +21,7 @@ Proyek ini mengimplementasikan konsep kriptografi asimetris dalam antarmuka yang
 
 ---
 
-## 🧩 Deskripsi Proyek
+## Deskripsi Proyek
 
 Di era digital, memastikan bahwa sebuah dokumen tidak diubah dan benar-benar berasal dari pengirim yang sah adalah tantangan besar. Proyek **Sign-QR** menjawab tantangan ini dengan menyediakan platform yang memungkinkan pengguna untuk:
 
@@ -32,7 +32,7 @@ Di era digital, memastikan bahwa sebuah dokumen tidak diubah dan benar-benar ber
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## Arsitektur Sistem
 
 Aplikasi ini dibangun menggunakan arsitektur 2-tier (Client-Server):
 
@@ -42,7 +42,7 @@ Aplikasi ini dibangun menggunakan arsitektur 2-tier (Client-Server):
 
 ---
 
-## 🔐 Algoritma Inti: RSA & SHA-256
+## Algoritma Inti: RSA & SHA-256
 
 Inti dari sistem keamanan aplikasi ini adalah kombinasi dari fungsi hash **SHA-256** dan algoritma kriptografi asimetris **RSA (Rivest–Shamir–Adleman)**.
 
@@ -56,9 +56,9 @@ Inti dari sistem keamanan aplikasi ini adalah kombinasi dari fungsi hash **SHA-2
 - `Verifikasi` = Dekripsi `Tanda Tangan` dengan `Kunci Publik`, lalu bandingkan hasilnya dengan `SHA-256(Dokumen)`
 ---
 
-## 🚀 Cara Menjalankan Aplikasi
+## Cara Menjalankan Aplikasi
 
-### ❗ Konfigurasi Firebase
+### Konfigurasi Firebase
 
 Sebelum menjalankan backend, Anda perlu menghubungkan aplikasi ke project Firebase Anda.
 
