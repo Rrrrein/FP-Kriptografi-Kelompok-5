@@ -88,7 +88,7 @@ Backend berjalan di: http://localhost:5000
 
 ![Screenshot 2025-06-09 162959](https://github.com/user-attachments/assets/f8a3f14a-f463-4447-801b-4b8c120fdb60)
 
-### 2. Jalankan Fr
+### 2. Jalankan Frontend
 
 ```bash
 cd web-app/fe/signqr
@@ -96,12 +96,18 @@ npm install
 npm start
 ```
 Frontend berjalan di: http://localhost:3000
-
+### 1. Halaman Utama & Pembuatan Kunci
+User disambut di `main page`. Untuk memulai, pengguna harus membuat identitas digital dengan menavigasi ke halaman "Buat Kunci" dan menghasilkan pasangan kunci RSA.
 ![Screenshot 2025-06-09 163150](https://github.com/user-attachments/assets/4a6e4de0-6791-434b-94d6-43fa69e3d591)
 
+### 2. Proses Penandatanganan Dokumen
+Setelah memiliki kunci, pengguna dapat mengunggah dokumen (misalnya .txt), lalu menandatanganinya menggunakan Kunci Privat mereka. Aplikasi akan menghasilkan sebuah QR Code.
 ![Screenshot 2025-06-09 163209](https://github.com/user-attachments/assets/ed2e8f1e-d75b-467d-8de5-97758ba801f8)
 
+### 3. Halaman Verifikasi
+QR Code tersebut berisi tautan unik ke halaman verifikasi. Pihak ketiga dapat memindai QR code atau mengunjungi tautan tersebut, mengunggah dokumen asli, dan memasukkan Kunci Publik pengirim untuk memverifikasi keasliannya.
 ![Screenshot 2025-06-09 163222](https://github.com/user-attachments/assets/2d432243-2eff-490c-8184-29915844e25f)
 
 
-### PENTING!! : tambahkan serviceAccountKey.json di local ny masing masing buat firestore
+### NOTES!! 
+_Untuk terhubung ke Firebase, Anda perlu membuat file kredensial serviceAccountKey.json dari project Firebase Anda (locals). Letakkan file ini di dalam folder `web-app/be`. File ini sengaja tidak disertakan di repositori demi keamanan._
