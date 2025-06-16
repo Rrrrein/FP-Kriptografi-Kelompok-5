@@ -21,17 +21,6 @@ Proyek ini mengimplementasikan konsep kriptografi asimetris dalam antarmuka yang
 
 ---
 
-## 📑 Daftar Isi
-
-- [Deskripsi Proyek](#deskripsi-proyek)
-- [Arsitektur Sistem](#arsitektur-sistem)
-- [Algoritma Inti: RSA](#algoritma-inti-rsa)
-- [Teknologi yang Digunakan](#teknologi-yang-digunakan)
-- [Cara Menjalankan Aplikasi](#cara-menjalankan-aplikasi)
-- [Dokumentasi & Alur Kerja Aplikasi](#dokumentasi--alur-kerja-aplikasi)
-
----
-
 ## 🧩 Deskripsi Proyek
 
 Di era digital, memastikan bahwa sebuah dokumen tidak diubah dan benar-benar berasal dari pengirim yang sah adalah tantangan besar. Proyek **Sign-QR** menjawab tantangan ini dengan menyediakan platform yang memungkinkan pengguna untuk:
