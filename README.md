@@ -9,8 +9,8 @@
 | 3. | Ricko Mianto        | 5027231031    | Backend                          |
 | 4. | Agnes Zenobia G P   | 5027231034    | Frontend                         |
 | 5. | Nayla Raissa A      | 5027231054    | Frontend                         |
-| 6. | Aisha Ayya R        | 5027231056    | Pengujian dan Dokumentasi        |
-| 7. | Aisyah Rahmasari    | 5027231072    | Pengujian dan Dokumentasi        |
+| 6. | Aisha Ayya R        | 5027231056    | FrontEnd                         |
+| 7. | Aisyah Rahmasari    | 5027231072    | FrontEnd                         |
 
 
 # Sign-QR: Sistem Tanda Tangan & Verifikasi Dokumen Digital
