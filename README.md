@@ -2,7 +2,7 @@
 
 ## Anggota Kelompok 5
 
-| No | Nama Anggota        | NIM           | Jobdesc                          |
+| No | Nama Anggota        | NRP           | Jobdesc                          |
 |----|---------------------|---------------|----------------------------------|
 | 1. | M. Abhinaya         | 5027231011    | Backend                          |
 | 2. | Aswalia Novitriasari| 5027231012    | Frontend                         |
