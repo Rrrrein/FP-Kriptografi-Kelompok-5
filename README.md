@@ -26,7 +26,6 @@ Proyek ini mengimplementasikan konsep kriptografi asimetris dalam antarmuka yang
 - [Deskripsi Proyek](#deskripsi-proyek)
 - [Arsitektur Sistem](#arsitektur-sistem)
 - [Algoritma Inti: RSA](#algoritma-inti-rsa)
-- [Anggota Kelompok](#anggota-kelompok)
 - [Teknologi yang Digunakan](#teknologi-yang-digunakan)
 - [Cara Menjalankan Aplikasi](#cara-menjalankan-aplikasi)
 - [Dokumentasi & Alur Kerja Aplikasi](#dokumentasi--alur-kerja-aplikasi)
@@ -54,23 +53,31 @@ Aplikasi ini dibangun menggunakan arsitektur 2-tier (Client-Server):
 
 ---
 
-## 🔐 Algoritma Inti: RSA
+## 🔐 Algoritma Inti: RSA & SHA-256
 
-**RSA (Rivest–Shamir–Adleman)** adalah inti dari sistem keamanan aplikasi ini:
+Inti dari sistem keamanan aplikasi ini adalah kombinasi dari fungsi hash **SHA-256** dan algoritma kriptografi asimetris **RSA (Rivest–Shamir–Adleman)**.
 
-- **Kunci Privat**: Digunakan untuk membuat tanda tangan digital.
-- **Kunci Publik**: Digunakan untuk memverifikasi tanda tangan digital.
-  
+- **SHA-256**: Digunakan untuk membuat *hash* (intisari digital) yang unik dari konten dokumen. Jika satu bit saja dari dokumen berubah, nilai hash akan berubah total.
+- **Kunci Privat (RSA)**: Digunakan untuk mengenkripsi *hash* dokumen. Proses inilah yang disebut "membuat tanda tangan digital".
+- **Kunci Publik (RSA)**: Dibagikan secara bebas dan digunakan untuk mendekripsi tanda tangan, lalu membandingkan hash-nya dengan hash dokumen asli untuk verifikasi.
+
 ### Proses:
 
-- `Tanda Tangan` = `Hash(Dokumen)` dienkripsi dengan `Kunci Privat`
-- `Verifikasi` = Decrypt `Tanda Tangan` dengan `Kunci Publik`, bandingkan dengan `Hash(Dokumen)`
-
-Jika satu bit saja dari dokumen diubah, verifikasi akan gagal.
-
+- `Tanda Tangan` = `SHA-256(Dokumen)` dienkripsi dengan `Kunci Privat`
+- `Verifikasi` = Dekripsi `Tanda Tangan` dengan `Kunci Publik`, lalu bandingkan hasilnya dengan `SHA-256(Dokumen)`
 ---
 
 ## 🚀 Cara Menjalankan Aplikasi
+
+### ❗ Konfigurasi Firebase
+
+Sebelum menjalankan backend, Anda perlu menghubungkan aplikasi ke project Firebase Anda.
+
+> **PENTING:**
+> 1. Dapatkan file kredensial `serviceAccountKey.json` dari konsol Firebase Anda.
+> 2. Letakkan file tersebut di dalam folder root backend (`web-app/be`).
+>
+> *File ini tidak disertakan dalam repositori untuk menjaga keamanan kredensial proyek.*
 
 ### 🔧 Prasyarat
 
@@ -96,18 +103,19 @@ npm install
 npm start
 ```
 Frontend berjalan di: http://localhost:3000
+
 ### 1. Halaman Utama & Pembuatan Kunci
 User disambut di `main page`. Untuk memulai, pengguna harus membuat identitas digital dengan menavigasi ke halaman "Buat Kunci" dan menghasilkan pasangan kunci RSA.
+
 ![Screenshot 2025-06-09 163150](https://github.com/user-attachments/assets/4a6e4de0-6791-434b-94d6-43fa69e3d591)
 
 ### 2. Proses Penandatanganan Dokumen
 Setelah memiliki kunci, pengguna dapat mengunggah dokumen (misalnya .txt), lalu menandatanganinya menggunakan Kunci Privat mereka. Aplikasi akan menghasilkan sebuah QR Code.
+
 ![Screenshot 2025-06-09 163209](https://github.com/user-attachments/assets/ed2e8f1e-d75b-467d-8de5-97758ba801f8)
 
 ### 3. Halaman Verifikasi
 QR Code tersebut berisi tautan unik ke halaman verifikasi. Pihak ketiga dapat memindai QR code atau mengunjungi tautan tersebut, mengunggah dokumen asli, dan memasukkan Kunci Publik pengirim untuk memverifikasi keasliannya.
+
 ![Screenshot 2025-06-09 163222](https://github.com/user-attachments/assets/2d432243-2eff-490c-8184-29915844e25f)
 
-
-### NOTES!! 
-_Untuk terhubung ke Firebase, Anda perlu membuat file kredensial serviceAccountKey.json dari project Firebase Anda (locals). Letakkan file ini di dalam folder `web-app/be`. File ini sengaja tidak disertakan di repositori demi keamanan._
