@@ -1,0 +1,439 @@
+openapi: 3.0.3
+info:
+  title: Digital Signature API
+  description: |
+    RESTful API untuk digital signature menggunakan RSA 2048-bit encryption.
+    
+    ## Features:
+    - 🔐 User authentication dengan Firebase
+    - 🔑 RSA key pair generation
+    - ✍️ Document digital signing
+    - ✅ Signature verification
+    - 📁 Document management
+    
+    ## Security:
+    - JWT-based authentication
+    - User data isolation
+    - Cryptographic signing dengan SHA-256
+  version: 1.0.0
+  contact:
+    name: Development Team
+    email: dev@digitalsignature.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /register:
+    post:
+      tags:
+        - Authentication
+      summary: Register new user
+      description: Registrasi user baru menggunakan email dan password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: securePassword123
+      responses:
+        '201':
+          description: User berhasil didaftarkan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uid:
+                    type: string
+                    example: firebase_user_id_123
+                  email:
+                    type: string
+                    example: user@example.com
+        '400':
+          description: Request tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorWithDetails'
+
+  /my-keys:
+    get:
+      tags:
+        - Key Management
+      summary: Get user's key pairs
+      description: Mengambil semua key pairs milik user yang sedang login
+      responses:
+        '200':
+          description: List key pairs berhasil diambil
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/KeyPair'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /KeyGen:
+    get:
+      tags:
+        - Key Management
+      summary: Generate new RSA key pair
+      description: Generate RSA 2048-bit key pair baru untuk user
+      responses:
+        '200':
+          description: Key pair berhasil di-generate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: keypair_doc_id_123
+                  publicKey:
+                    type: string
+                    format: base64
+                    example: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          description: Gagal menyimpan key pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sign:
+    post:
+      tags:
+        - Document Signing
+      summary: Sign document
+      description: Menandatangani dokumen menggunakan key pair milik user
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - keyPairId
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File yang akan ditandatangani
+                keyPairId:
+                  type: string
+                  description: ID key pair yang akan digunakan
+                  example: keypair_doc_id_123
+      responses:
+        '200':
+          description: Dokumen berhasil ditandatangani
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: signed_doc_id_123
+                  fileName:
+                    type: string
+                    example: 1640123456789-document.pdf
+                  signature:
+                    type: string
+                    format: base64
+                    example: SGVsbG9Xb3JsZA==
+        '400':
+          description: Request tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Key pair tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /verify:
+    post:
+      tags:
+        - Verification
+      summary: Verify digital signature
+      description: Verifikasi digital signature dokumen (endpoint publik)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - documentId
+                - publicKey
+              properties:
+                documentId:
+                  type: string
+                  example: signed_doc_id_123
+                publicKey:
+                  type: string
+                  format: base64
+                  example: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...
+      responses:
+        '200':
+          description: Hasil verifikasi
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/VerificationSuccess'
+                  - $ref: '#/components/schemas/VerificationFailed'
+        '400':
+          description: Request tidak valid
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verify:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: Document ID and Public Key are required.
+        '404':
+          description: Dokumen tidak ditemukan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verify:
+                    type: boolean
+                    example: false
+                  error:
+                    type: string
+                    example: Document not found
+
+  /documents/{id}:
+    get:
+      tags:
+        - Documents
+      summary: Get document metadata
+      description: Mengambil metadata dokumen berdasarkan ID (endpoint publik)
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          example: signed_doc_id_123
+      responses:
+        '200':
+          description: Metadata dokumen berhasil diambil
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Document'
+        '404':
+          description: Dokumen tidak ditemukan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase JWT token
+
+  schemas:
+    KeyPair:
+      type: object
+      properties:
+        id:
+          type: string
+          example: keypair_doc_id_123
+        userId:
+          type: string
+          example: firebase_user_uid
+        publicKey:
+          type: string
+          format: base64
+          example: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...
+        privateKey:
+          type: string
+          format: base64
+          example: MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKg...
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+          example: signed_doc_id_123
+        fileName:
+          type: string
+          example: 1640123456789-document.pdf
+        originalName:
+          type: string
+          example: document.pdf
+        signature:
+          type: string
+          format: base64
+          example: SGVsbG9Xb3JsZA==
+        signedBy:
+          $ref: '#/components/schemas/SignedBy'
+        signedAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00.000Z"
+
+    SignedBy:
+      type: object
+      properties:
+        uid:
+          type: string
+          example: firebase_user_uid
+        email:
+          type: string
+          format: email
+          example: signer@example.com
+
+    VerificationSuccess:
+      type: object
+      properties:
+        fileName:
+          type: string
+          example: 1640123456789-document.pdf
+        signature:
+          type: string
+          format: base64
+          example: SGVsbG9Xb3JsZA==
+        verify:
+          type: boolean
+          example: true
+        signedBy:
+          $ref: '#/components/schemas/SignedBy'
+        fileURL:
+          type: string
+          format: uri
+          example: https://supabase_public_url/file
+
+    VerificationFailed:
+      type: object
+      properties:
+        fileName:
+          type: string
+          example: 1640123456789-document.pdf
+        signature:
+          type: string
+          format: base64
+          example: SGVsbG9Xb3JsZA==
+        verify:
+          type: boolean
+          example: false
+        signedBy:
+          $ref: '#/components/schemas/SignedBy'
+        error:
+          type: string
+          example: Signature is not valid.
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Error message
+
+    ErrorWithDetails:
+      type: object
+      properties:
+        error:
+          type: string
+          example: Error message
+        details:
+          type: string
+          example: Detailed error information
+
+  responses:
+    Unauthorized:
+      description: Token tidak ditemukan
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Token tidak ditemukan. Anda harus login.
+
+    Forbidden:
+      description: Token tidak valid atau akses ditolak
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: Token tidak valid atau sudah kedaluwarsa.
+
+tags:
+  - name: Authentication
+    description: User registration dan authentication
+  - name: Key Management
+    description: RSA key pair generation dan management
+  - name: Document Signing
+    description: Digital document signing
+  - name: Verification
+    description: Digital signature verification
+  - name: Documents
+    description: Document metadata management 
