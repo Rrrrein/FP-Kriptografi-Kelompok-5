@@ -111,7 +111,7 @@ export default function VerifyPage() {
           Document Verification
         </h1>
         <p className="mt-2 flex items-center justify-center gap-2 text-text-muted">
-          <FiFileText /> Verifying file: <strong>{document.originalName || document.fileName}</strong>
+          <FiFileText /> Verifying file: <strong>{document.originalName || document.fileName}</strong> signed by <strong>{document.signedBy.email}</strong>
         </p>
       </div>
       

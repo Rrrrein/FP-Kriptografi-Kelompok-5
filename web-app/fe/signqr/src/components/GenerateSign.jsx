@@ -132,7 +132,9 @@ export default function GenerateSignaturePage() {
                 >
                   {keyPairs.map(key => (
                     <option key={key.id} value={key.id}>
-                      ID: {key.id.substring(0, 10)}... (Created at: {new Date(key.createdAt.seconds * 1000).toLocaleDateString()})
+                      ID: {key.id.substring(0, 10)}... (Created at: {
+                        key.createdAt ? new Date(key.createdAt).toLocaleDateString() : 'Unknown'
+                      })
                     </option>
                   ))}
                 </select>

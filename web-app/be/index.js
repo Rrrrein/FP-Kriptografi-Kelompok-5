@@ -77,10 +77,15 @@ app.get('/my-keys', authenticateToken, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get();
       
-    const keys = keysSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const keys = keysSnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Konversi Firestore Timestamp ke ISO string untuk frontend
+        createdAt: data.createdAt ? data.createdAt.toDate().toISOString() : null
+      };
+    });
     
     res.send(keys);
   } catch (error) {
