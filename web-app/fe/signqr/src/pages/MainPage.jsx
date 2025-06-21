@@ -1,23 +1,21 @@
-// src/pages/MainPage.jsx
-
 import React from 'react';
 import { Link } from 'react-router-dom';
-
-// 1. Import Ikon untuk setiap langkah dalam proses
 import { FiKey, FiPenTool, FiCheckSquare, FiArrowRight } from 'react-icons/fi';
+import { useAuth } from '../context/AuthContext'; // 1. Impor useAuth
 
 export default function MainPage() {
-  // 2. Data untuk "How It Works" agar kode lebih bersih
+  const { currentUser } = useAuth(); // 2. Dapatkan status login pengguna
+
   const steps = [
     {
       icon: <FiKey className="h-10 w-10 text-secondary" />,
       title: "1. Generate Identity",
-      description: "Create your unique and secure pair of Public and Private Keys. Your keys are your digital identity.",
+      description: "Create your unique and secure pair of Public and Private Keys, linked to your account.",
     },
     {
       icon: <FiPenTool className="h-10 w-10 text-primary" />,
       title: "2. Sign Document",
-      description: "Use your Private Key to create a unique digital signature for any file, proving its authenticity and integrity.",
+      description: "Use your stored Private Key to create a unique digital signature for any file, proving its authenticity.",
     },
     {
       icon: <FiCheckSquare className="h-10 w-10 text-green-400" />,
@@ -26,11 +24,8 @@ export default function MainPage() {
     },
   ];
 
-  // 3. Struktur JSX yang sepenuhnya baru untuk sebuah Landing Page
   return (
     <div className="flex flex-col items-center justify-center p-4 text-center">
-      
-      {/* Hero Section - Bagian Sambutan Utama */}
       <div className="mt-10 mb-20">
         <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-5xl font-extrabold text-transparent sm:text-6xl md:text-7xl">
           Secure Your Digital World
@@ -39,24 +34,21 @@ export default function MainPage() {
           Create, sign, and verify documents with the power of RSA cryptography. An end-to-end solution for digital integrity.
         </p>
         
-        {/* Tombol Call-to-Action (CTA) */}
         <div className="mt-8">
+          {/* 3. Buat Link menjadi dinamis */}
           <Link
-            to="/key" // Arahkan ke halaman Generate Key
+            to={currentUser ? "/keys" : "/auth"} // Arahkan ke /keys jika sudah login, jika tidak ke /auth
             className="group inline-flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary to-accent px-8 py-4 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105"
           >
-            Get Started - Generate Keys
+            {currentUser ? "Go to Your Dashboard" : "Get Started - Create Account"}
             <FiArrowRight className="transition-transform duration-300 group-hover:translate-x-1" />
           </Link>
         </div>
       </div>
 
-      {/* "How It Works" Section - Penjelasan Alur Kerja */}
       <div className="w-full max-w-5xl">
         <h2 className="mb-12 text-3xl font-bold text-text-light">How It Works in 3 Simple Steps</h2>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          
-          {/* Mapping data 'steps' untuk membuat kartu secara dinamis */}
           {steps.map((step, index) => (
             <div 
               key={index}

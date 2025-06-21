@@ -1,119 +1,96 @@
-// src/pages/GenerateKey.jsx
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
-
-// 1. Import Ikon dan Notifikasi "Toast"
 import { FiKey, FiCopy, FiCheckCircle, FiLoader } from "react-icons/fi";
 import { toast } from "react-hot-toast";
+import { useAuth } from "../context/AuthContext"; // <-- GUNAKAN AUTH CONTEXT
 
 export default function GenerateKeyPage() {
-  // 2. State yang lebih deskriptif
-  const [privateKey, setPrivateKey] = useState("");
-  const [publicKey, setPublicKey] = useState("");
-  const [isLoading, setIsLoading] = useState(false); // Untuk state loading
-  const [copiedKey, setCopiedKey] = useState(null); // Untuk feedback tombol copy
+  const [keyPairs, setKeyPairs] = useState([]); // <-- State untuk menyimpan daftar key
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
+  const [copiedInfo, setCopiedInfo] = useState({ id: null, type: null });
 
-  // 3. Fungsi API yang lebih modern dengan async/await dan try/catch
-  async function getKey() {
+  const { idToken } = useAuth(); // <-- Ambil ID Token
+
+  // Fungsi untuk mengambil semua key pair milik user
+  const fetchKeys = async () => {
+    if (!idToken) return;
+    setIsFetching(true);
+    try {
+      const res = await axios.get("http://localhost:5000/my-keys", {
+        headers: { 'Authorization': `Bearer ${idToken}` }
+      });
+      setKeyPairs(res.data);
+    } catch (err) {
+      toast.error("Gagal mengambil daftar kunci.");
+    } finally {
+      setIsFetching(false);
+    }
+  };
+  
+  // Ambil data kunci saat komponen pertama kali dimuat
+  useEffect(() => {
+    fetchKeys();
+  }, [idToken]);
+
+  // Fungsi untuk membuat key baru
+  async function generateNewKey() {
     setIsLoading(true);
     try {
-      const res = await axios.get("http://localhost:5000/KeyGen");
-      setPublicKey(res.data.publicKey);
-      setPrivateKey(res.data.privateKey);
-      toast.success('New keys generated successfully!');
+      await axios.get("http://localhost:5000/KeyGen", {
+        headers: { 'Authorization': `Bearer ${idToken}` } // <-- KIRIM TOKEN
+      });
+      toast.success('Kunci baru berhasil dibuat!');
+      await fetchKeys(); // Ambil ulang daftar kunci
     } catch (err) {
-      console.error("Failed to generate keys:", err);
-      toast.error('Failed to generate keys. Please check the server.');
+      toast.error('Gagal membuat kunci baru.');
     } finally {
       setIsLoading(false);
     }
   }
 
-  // 4. Fungsi Copy yang modern menggunakan Navigator API
-  function handleCopy(keyType, text) {
-    if (!text) return; // Jangan lakukan apa-apa jika teks kosong
-    
+  function handleCopy(id, keyType, text) {
+    if (!text) return;
     navigator.clipboard.writeText(text).then(() => {
-      setCopiedKey(keyType);
-      toast.success(`${keyType === 'public' ? 'Public Key' : 'Private Key'} copied to clipboard!`);
-      // Reset ikon dan teks tombol setelah 2 detik
-      setTimeout(() => setCopiedKey(null), 2000);
-    }).catch(err => {
-      console.error('Failed to copy text: ', err);
-      toast.error('Failed to copy text.');
+      setCopiedInfo({ id, type: keyType });
+      toast.success(`${keyType === 'public' ? 'Public Key' : 'Key ID'} disalin!`);
+      setTimeout(() => setCopiedInfo({ id: null, type: null }), 2000);
     });
   }
 
-  // 5. Struktur JSX yang sepenuhnya baru dengan kelas Tailwind dari tema modern
   return (
     <div className="flex flex-col items-center justify-center p-4">
-      {/* Judul Halaman dengan Efek Gradasi */}
       <div className="mb-8 text-center">
         <h1 className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-4xl font-bold text-transparent md:text-5xl">
-          Digital Identity Generator
+          Your Key Pairs
         </h1>
-        <p className="mt-2 text-text-muted">Create your secure Public & Private key pair.</p>
+        <p className="mt-2 text-text-muted">Manage your public keys. Private keys are stored securely on the server.</p>
       </div>
-
-      {/* Kartu "Kaca" utama */}
-      <div className="w-full max-w-4xl rounded-2xl border border-border-color bg-card-bg p-8 shadow-2xl backdrop-blur-lg">
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-          
-          {/* Kartu Public Key */}
-          <div className="flex flex-col">
-            <h2 className="mb-3 text-center text-xl font-semibold text-secondary">Public Key</h2>
-            <textarea
-              rows="6"
-              className="w-full flex-grow rounded-lg border border-border-color bg-dark-bg p-3 text-sm text-text-light focus:border-secondary focus:ring-2 focus:ring-secondary"
-              readOnly
-              value={publicKey}
-              placeholder="Your public key will appear here..."
-            />
-            <button
-              onClick={() => handleCopy('public', publicKey)}
-              disabled={!publicKey}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-secondary px-4 py-2 font-semibold text-dark-bg transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:bg-text-muted"
-            >
-              {copiedKey === 'public' ? <FiCheckCircle /> : <FiCopy />}
-              {copiedKey === 'public' ? 'Copied!' : 'Copy Public Key'}
-            </button>
-          </div>
-
-          {/* Kartu Private Key */}
-          <div className="flex flex-col">
-            <h2 className="mb-3 text-center text-xl font-semibold text-primary">Private Key</h2>
-            <textarea
-              rows="6"
-              className="w-full flex-grow rounded-lg border border-border-color bg-dark-bg p-3 text-sm text-text-light focus:border-primary focus:ring-2 focus:ring-primary"
-              readOnly
-              value={privateKey}
-              placeholder="Your private key will appear here..."
-            />
-            <button
-              onClick={() => handleCopy('private', privateKey)}
-              disabled={!privateKey}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-semibold text-white transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:bg-text-muted"
-            >
-              {copiedKey === 'private' ? <FiCheckCircle /> : <FiCopy />}
-              {copiedKey === 'private' ? 'Copied!' : 'Copy Private Key'}
-            </button>
-          </div>
-        </div>
-
-        {/* Tombol Generate Utama yang Interaktif */}
-        <div className="mt-10 flex justify-center">
-          <button
-            onClick={getKey}
-            disabled={isLoading}
-            className="group flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary to-accent px-8 py-3 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 disabled:bg-gradient-to-r disabled:from-text-muted disabled:to-text-muted disabled:hover:scale-100"
-          >
-            {isLoading 
-              ? <FiLoader className="animate-spin" /> 
-              : <FiKey className="transition-transform duration-300 group-hover:rotate-12" />
-            }
-            {isLoading ? 'Generating...' : 'Generate New Keys'}
+      <div className="w-full max-w-4xl">
+        <div className="flex justify-center mb-6">
+          <button onClick={generateNewKey} disabled={isLoading} className="group flex items-center justify-center gap-3 rounded-full bg-gradient-to-r from-primary to-accent px-8 py-3 text-lg font-bold text-white shadow-lg transition-transform duration-300 hover:scale-105 disabled:opacity-50">
+            {isLoading ? <FiLoader className="animate-spin" /> : <FiKey />}
+            {isLoading ? 'Generating...' : 'Generate New Key Pair'}
           </button>
+        </div>
+        
+        <div className="rounded-2xl border border-border-color bg-card-bg p-8 shadow-2xl backdrop-blur-lg">
+          <h2 className="text-2xl font-bold mb-4 text-white">My Stored Keys</h2>
+          {isFetching ? <div className="text-center text-text-muted">Loading keys...</div> :
+            keyPairs.length === 0 ? <div className="text-center text-text-muted">You don't have any key pairs yet. Generate one!</div> :
+            <div className="space-y-4">
+              {keyPairs.map(key => (
+                <div key={key.id} className="p-4 rounded-lg bg-dark-bg border border-border-color">
+                   <p className="text-sm text-text-muted mb-2 font-mono">Key ID: {key.id}</p>
+                   <textarea rows="3" className="w-full rounded-md bg-black/30 p-2 text-sm text-text-light font-mono" readOnly value={key.publicKey} />
+                   <button onClick={() => handleCopy(key.id, 'public', key.publicKey)} className="mt-2 flex items-center gap-2 text-sm text-secondary hover:text-primary">
+                      {copiedInfo.id === key.id && copiedInfo.type === 'public' ? <FiCheckCircle /> : <FiCopy />}
+                      {copiedInfo.id === key.id && copiedInfo.type === 'public' ? 'Copied!' : 'Copy Public Key'}
+                   </button>
+                </div>
+              ))}
+            </div>
+          }
         </div>
       </div>
     </div>

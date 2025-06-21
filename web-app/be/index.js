@@ -66,6 +66,30 @@ app.post('/register', async (req, res) => {
 // Client akan mendapatkan ID Token setelah login, lalu mengirim token itu ke server ini.
 
 // =================================================================
+// ENDPOINT BARU UNTUK MENGAMBIL SEMUA KEY MILIK USER
+// =================================================================
+app.get('/my-keys', authenticateToken, async (req, res) => {
+  const userId = req.user.uid;
+
+  try {
+    const keysSnapshot = await db.collection('keyPairs')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+      
+    const keys = keysSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.send(keys);
+  } catch (error) {
+    console.error("Gagal mengambil kunci:", error);
+    res.status(500).send({ error: 'Gagal mengambil data kunci dari server.' });
+  }
+});
+
+// =================================================================
 // ENDPOINT UNTUK MEMBUAT KUNCI (Dilindungi Autentikasi)
 // =================================================================
 app.get('/KeyGen', authenticateToken, (req, res) => { // REVISI: Tambahkan middleware authenticateToken
