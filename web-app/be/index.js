@@ -1,8 +1,9 @@
 import express from 'express';
 import crypto from 'crypto';
 import multer from 'multer';
-import { db } from './config.js'; // tambahkan .js
-import { supabase } from './supabaseClient.js'; // tambahkan .js
+import admin from 'firebase-admin';
+import { db } from './config.js';
+import { supabase } from './supabaseClient.js';
 
 const app = express();
 const port = 5000;
@@ -13,7 +14,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE'); // Izinkan lebih banyak metode
-  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+  res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type,Authorization');
   next();
 });
 
@@ -21,19 +22,72 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // =================================================================
-// ENDPOINT UNTUK MEMBUAT KUNCI (Tidak Diubah)
+// MIDDLEWARE UNTUK VERIFIKASI TOKEN AUTENTIKASI
 // =================================================================
-app.get('/KeyGen', (req, res) => {
+const authenticateToken = async (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (token == null) {
+    return res.status(401).send({ error: 'Token tidak ditemukan. Anda harus login.' });
+  }
+
+  try {
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    req.user = decodedToken; // Simpan data user (uid, email, dll) di object request
+    next();
+  } catch (error) {
+    console.error("Error verifikasi token:", error);
+    return res.status(403).send({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
+  }
+};
+
+// =================================================================
+// ENDPOINT UNTUK AUTENTIKASI PENGGUNA
+// =================================================================
+// Endpoint untuk registrasi user baru
+app.post('/register', async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+        return res.status(400).send({ error: 'Email dan password dibutuhkan.' });
+    }
+    try {
+        const userRecord = await admin.auth().createUser({
+            email: email,
+            password: password,
+        });
+        res.status(201).send({ uid: userRecord.uid, email: userRecord.email });
+    } catch (error) {
+        console.error("Gagal membuat user:", error);
+        res.status(500).send({ error: 'Gagal mendaftarkan pengguna.', details: error.message });
+    }
+});
+// Catatan: Proses login biasanya dilakukan di sisi client menggunakan Firebase SDK Client.
+// Client akan mendapatkan ID Token setelah login, lalu mengirim token itu ke server ini.
+
+// =================================================================
+// ENDPOINT UNTUK MEMBUAT KUNCI (Dilindungi Autentikasi)
+// =================================================================
+app.get('/KeyGen', authenticateToken, (req, res) => { // REVISI: Tambahkan middleware authenticateToken
     const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
       modulusLength: 2048,
       publicKeyEncoding: { type: 'spki', format: 'der' },
       privateKeyEncoding: { type: 'pkcs8', format: 'der' },
     });
   
+    // REVISI: Tambahkan userId ke data yang disimpan
+    const keyPairData = {
+      userId: req.user.uid, // Kaitkan kunci dengan user yang sedang login
+      publicKey: publicKey.toString('base64'),
+      privateKey: privateKey.toString('base64'),
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
     db.collection('keyPairs')
-      .add({ publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64') })
+      .add(keyPairData)
       .then((docRef) => {
-        res.send({ id: docRef.id, publicKey: publicKey.toString('base64'), privateKey: privateKey.toString('base64') });
+        // REVISI: Jangan kirim privateKey kembali ke client. Cukup kirim ID dan public key.
+        res.send({ id: docRef.id, publicKey: keyPairData.publicKey });
       })
       .catch((error) => {
         console.error("Gagal menyimpan key pair:", error);
@@ -42,22 +96,38 @@ app.get('/KeyGen', (req, res) => {
 });
 
 // =================================================================
-// ENDPOINT BARU UNTUK MENANDATANGANI (Menggabungkan /upload dan /sign)
+// ENDPOINT UNTUK MENANDATANGANI (Dilindungi & Lebih Aman)
 // =================================================================
-app.post("/sign", upload.single("file"), async (req, res) => {
-  const privateKeyString = req.body.privateKey;
+app.post("/sign", authenticateToken, upload.single("file"), async (req, res) => { // REVISI: Tambahkan middleware
+  // REVISI: Input diubah, tidak lagi menerima privateKey, tapi keyPairId
+  const { keyPairId } = req.body;
   const uploadedFile = req.file;
+  const userId = req.user.uid;
 
   if (!uploadedFile) {
-    return res.status(400).send({ error: "File tidak ditemukan. Pastikan Anda mengunggah file." });
+    return res.status(400).send({ error: "File tidak ditemukan." });
   }
-  if (!privateKeyString) {
-    return res.status(400).send({ error: "Kunci privat tidak ditemukan." });
+  if (!keyPairId) {
+    return res.status(400).send({ error: "ID Key Pair dibutuhkan." });
   }
 
   try {
+    // 1. Ambil key pair dari Firestore
+    const keyDoc = await db.collection('keyPairs').doc(keyPairId).get();
+    if (!keyDoc.exists) {
+        return res.status(404).send({ error: 'Key Pair tidak ditemukan.' });
+    }
+
+    const keyData = keyDoc.data();
+
+    // 2. Verifikasi kepemilikan kunci
+    if (keyData.userId !== userId) {
+        return res.status(403).send({ error: 'Akses ditolak. Anda bukan pemilik key pair ini.' });
+    }
+
+    // 3. Gunakan private key dari Firestore untuk membuat signature
     const privateKey = crypto.createPrivateKey({
-      key: Buffer.from(privateKeyString, "base64"),
+      key: Buffer.from(keyData.privateKey, "base64"),
       type: "pkcs8",
       format: "der",
     });
@@ -67,10 +137,9 @@ app.post("/sign", upload.single("file"), async (req, res) => {
     sign.end();
     const signature = sign.sign(privateKey).toString("base64");
 
-    // Membuat nama file yang unik untuk menghindari konflik
     const uniqueFileName = `${Date.now()}-${uploadedFile.originalname}`;
 
-    // 6. Unggah file ke Supabase Storage di bucket "files"
+    // 4. Unggah file ke Supabase Storage
     const { error: uploadError } = await supabase.storage
       .from('filles')
       .upload(uniqueFileName, uploadedFile.buffer, {
@@ -80,32 +149,35 @@ app.post("/sign", upload.single("file"), async (req, res) => {
       });
 
     if (uploadError) {
-      console.error("Gagal mengunggah file ke Supabase Storage:", uploadError);
-      return res.status(500).send({ error: "Gagal mengunggah file ke Supabase Storage" });
+      throw new Error("Gagal mengunggah file ke Supabase Storage: " + uploadError.message);
     }
 
-    // 7. Simpan metadata (tanpa konten file) ke Firestore
+    // 5. Simpan metadata ke Firestore dengan informasi penandatangan
     const docRef = await db.collection("documents").add({
       fileName: uniqueFileName,
       originalName: uploadedFile.originalname,
       signature: signature,
+      // REVISI: Tambahkan keterangan siapa yang menandatangani
+      signedBy: {
+        uid: req.user.uid,
+        email: req.user.email, // Ambil email dari token yang sudah didekode
+      },
+      signedAt: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    console.log("File berhasil ditandatangani dan disimpan:", docRef.id);
+    console.log("File berhasil ditandatangani oleh", req.user.email);
     res.send({ id: docRef.id, fileName: uniqueFileName, signature });
 
   } catch (error) {
     console.error("Terjadi error saat membuat signature:", error);
-    res.status(500).send({ error: "Format kunci privat tidak valid atau terjadi kesalahan lain." });
+    res.status(500).send({ error: "Terjadi kesalahan pada server saat proses signing.", details: error.message });
   }
 });
 
 // =================================================================
-// ENDPOINT UNTUK VERIFIKASI (Tidak Diubah, tapi lebih aman sekarang)
+// ENDPOINT UNTUK VERIFIKASI (Tidak Diubah, tetap publik)
 // =================================================================
-// ENDPOINT BARU UNTUK VERIFIKASI
 app.post("/verify", async (req, res) => {
-  // Input endpoint diubah untuk keamanan dan efisiensi
   const { documentId, publicKey: publicKeyString } = req.body;
 
   if (!documentId || !publicKeyString) {
@@ -113,46 +185,49 @@ app.post("/verify", async (req, res) => {
   }
   
   try {
-    // 1. Ambil metadata dokumen dari Firestore
     const doc = await db.collection('documents').doc(documentId).get();
-
     if (!doc.exists) {
       return res.status(404).send({ verify: false, error: "Document not found" });
     }
 
-    const { fileName, signature: storedSignature } = doc.data();
+    const { fileName, signature: storedSignature, signedBy } = doc.data();
     
-    // 2. Unduh file dari Supabase Storage untuk diverifikasi
     const { data: fileBlob, error: downloadError } = await supabase.storage
       .from('filles')
       .download(fileName);
-
     if (downloadError) {
       throw new Error("Could not download file from storage for verification.");
     }
 
     const fileBuffer = Buffer.from(await fileBlob.arrayBuffer());
 
-    // 3. Siapkan public key
     const publicKey = crypto.createPublicKey({
       key: Buffer.from(publicKeyString, "base64"),
       type: "spki",
       format: "der",
     });
 
-    // 4. Verifikasi tanda tangan terhadap file yang diunduh
     const verify = crypto.createVerify("SHA256");
     verify.update(fileBuffer);
     verify.end();
 
     const result = verify.verify(publicKey, Buffer.from(storedSignature, "base64"));
+    
+    // REVISI: Sertakan informasi penandatangan di response
+    const responsePayload = {
+        fileName,
+        signature: storedSignature,
+        verify: result,
+        signedBy: signedBy || null // Sertakan info signedBy jika ada
+    };
 
     if (result) {
-      // 5. Jika berhasil, dapatkan URL publik dari Supabase
       const { data: urlData } = supabase.storage.from('filles').getPublicUrl(fileName);
-      res.send({ fileName, signature: storedSignature, verify: true, fileURL: urlData.publicUrl });
+      responsePayload.fileURL = urlData.publicUrl;
+      res.send(responsePayload);
     } else {
-      res.send({ fileName, signature: storedSignature, verify: false, error: "Signature is not valid." });
+      responsePayload.error = "Signature is not valid.";
+      res.send(responsePayload);
     }
   } catch (error) {
     console.error("Error during verification:", error);
